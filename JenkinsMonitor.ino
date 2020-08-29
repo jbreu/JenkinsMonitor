@@ -114,6 +114,7 @@ void loop() {
   tft.fillScreen(ST77XX_BLACK);
   //tft.setRotation(2);
 
+  // TODO Check if for all images the size is ok
   for (int16_t j = 0; j < h; j++, y++) {
     for (int16_t i = 0; i < w; i++) {
       uint16_t word = pgm_read_word(&((uint16_t *)image)[j * w + i]);
