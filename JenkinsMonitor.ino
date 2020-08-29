@@ -109,10 +109,9 @@ void testdrawtext(const char *text, uint16_t color) {
 
   for (int16_t j = 0; j < h; j++, y++) {
     for (int16_t i = 0; i < w; i++) {
-      uint16_t word = pgm_read_word(&((uint16_t *)myBitmap)[j * w + i]);
+      uint16_t word = pgm_read_word(&((uint16_t *)sunny)[j * w + i]);
       tft.drawPixel(x + i, y, ~word );
     }
   }
-
 
 }
