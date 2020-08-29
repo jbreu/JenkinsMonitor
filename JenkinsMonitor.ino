@@ -1,23 +1,19 @@
-/*
-   Basic ESP Client example, based on the ESP libraries examples
-*/
-
 #include <ESP8266WiFi.h>
-//#include <ArduinoJson.h>
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
+#include <ArduinoJson.h>
+#include <Adafruit_GFX.h> 
+#include <Adafruit_ST7789.h>
 #include "data.h"
 #include "config.h"
 
 #define TFT_DC    D1     // TFT DC  pin is connected to NodeMCU pin D1 (GPIO5)
 #define TFT_RST   D2     // TFT RST pin is connected to NodeMCU pin D2 (GPIO4)
 #define TFT_CS    D8     // TFT CS  pin is connected to NodeMCU pin D8 (GPIO15)
-#define LED       D4      // D4 declare LED pin on NodeMCU Dev Kit
+#define LED       D4     // D4 declare LED pin on NodeMCU Dev Kit
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
 void setup() {
-  pinMode(LED, OUTPUT);   // Initialize the LED pin as an output
+  pinMode(LED, OUTPUT);
   digitalWrite(LED, LOW); // Turn the LED on
   Serial.begin(115200);
   delay(10);
@@ -56,62 +52,76 @@ void loop() {
                "Authorization: Basic " + token + "\r\n" +
                "Connection: close\r\n\r\n");
 
-  // Serial.println("request sent");
+  // Skip header
   while (client.connected()) {
-    String line = client.readStringUntil('"result"');
-    if (line == "result") {
-      Serial.println("headers received");
+    String line = client.readStringUntil('\n');
+    if (line.indexOf("Connection") >= 0)
       break;
-    }
   }
 
-  String line = client.readStringUntil('"timestamp"');
-  line = client.readStringUntil('"timestamp"');
+  // Read full response json
+  String line = "";
+  while (client.connected()) {
+    line += client.readStringUntil('\0');
+  }
 
-  Serial.println("==========");
-  Serial.println("Result: ");
-  Serial.println(line);
-  Serial.println("==========");
+  // Parse json for weather score
+  DynamicJsonDocument json(1024);
+  StaticJsonDocument<256> filter;
+  filter["healthReport"][0]["score"] = true;
+  auto error = deserializeJson(json, line.c_str(), DeserializationOption::Filter(filter));
+  //serializeJsonPretty(json, Serial);
 
-  testdrawtext(line.c_str(), ST77XX_WHITE);
+  if (error) {
+      Serial.print(F("deserializeJson() failed with code "));
+      Serial.println(error.c_str());
+      return;
+  }
 
-  delay(60000);
-  //delay(600000);
-
-}
-void testdrawtext(const char *text, uint16_t color) {
-
-  tft.setRotation(2);
-
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setCursor(25, 90);
-  tft.setTextSize(6);
-  tft.setTextColor(color);
-  tft.setTextWrap(true);
-  tft.print(text);
-
-  tft.setCursor(25, 10);
-  tft.setTextSize(5);
-  tft.setTextColor(ST77XX_BLUE);
-  tft.setTextWrap(true);
-  tft.print("status");
-
-  tft.setCursor(25, 160);
-  tft.setTextSize(5);
-  tft.setTextColor(ST77XX_RED);
-  tft.setTextWrap(true);
-  tft.print("Benis");
+  int score = json["healthReport"][0]["score"];
+  Serial.println(score);
 
   int16_t x = 0;
   int16_t y = 0;
   int16_t w = 200;
   int16_t h = 200;
 
+  const unsigned char * image;
+
+  switch (score) {
+    case 100:
+      image = sunny;
+      break;
+    case 80:
+      image = partiallysunny;
+      break;
+    case 60:
+      image = cloudy;
+      break;
+    case 40:
+      image = raining;
+      break;
+    case 20:
+      image = storm;
+      break;
+    case 0:
+      image = storm;
+      break;
+    default:
+      image = storm;
+  }
+
+  tft.fillScreen(ST77XX_BLACK);
+  //tft.setRotation(2);
+
   for (int16_t j = 0; j < h; j++, y++) {
     for (int16_t i = 0; i < w; i++) {
-      uint16_t word = pgm_read_word(&((uint16_t *)sunny)[j * w + i]);
-      tft.drawPixel(x + i, y, ~word );
+      uint16_t word = pgm_read_word(&((uint16_t *)image)[j * w + i]);
+      if (word != 0x0000) {
+        tft.drawPixel(20 + x + i, 20 + y, (((word<<8)&0xff00)|((word>>8)&0x00ff)) );
+      }
     }
   }
 
+  delay(60000);
 }
