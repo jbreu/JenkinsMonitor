@@ -37,7 +37,13 @@ void loop() {
   WiFiClientSecure client;
 
   //client.setFingerprint(fingerprint);
+  // Don't check server's fingerprint for a fixed value
   client.setInsecure(); //the magic line, use with caution
+
+  // TODO enable/disable client certificate by configuration
+  X509List cert(clientcert);
+  PrivateKey key(clientkey);
+  client.setClientRSACert(&cert, &key);
 
   if (!client.connect(host, 443)) {
     digitalWrite(LED, LOW); // Turn the LED on
@@ -46,7 +52,7 @@ void loop() {
   }
   digitalWrite(LED, HIGH); // Turn the LED on
 
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+  client.print(String("GET ") + url + reduction + " HTTP/1.1\r\n" +
                "Host: " + host + "\r\n" +
                "User-Agent: ESP8266\r\n" +
                "Authorization: Basic " + token + "\r\n" +
@@ -55,30 +61,35 @@ void loop() {
   // Skip header
   while (client.connected()) {
     String line = client.readStringUntil('\n');
-    if (line.indexOf("Connection") >= 0)
+    Serial.println(line);
+    if (line.startsWith("\r"))
       break;
   }
 
   // Read full response json
-  String line = "";
-  while (client.connected()) {
-    line += client.readStringUntil('\0');
-  }
+  String line = client.readStringUntil('\n');
 
   // Parse json for weather score
-  DynamicJsonDocument json(1024);
+  DynamicJsonDocument json(1000);
   StaticJsonDocument<256> filter;
   filter["healthReport"][0]["score"] = true;
-  auto error = deserializeJson(json, line.c_str(), DeserializationOption::Filter(filter));
+  auto error = deserializeJson(json, line, DeserializationOption::Filter(filter));
   //serializeJsonPretty(json, Serial);
 
   if (error) {
-      Serial.print(F("deserializeJson() failed with code "));
-      Serial.println(error.c_str());
-      return;
+    Serial.print(F("deserializeJson() failed with code "));
+    Serial.println(error.c_str());
+    tft.fillScreen(ST77XX_RED);
+    return;
+  }
+
+  if (json["healthReport"][0]["score"].isNull()) {
+    tft.fillScreen(ST77XX_RED);
+    return;
   }
 
   int score = json["healthReport"][0]["score"];
+  
   Serial.println(score);
 
   int16_t x = 0;
