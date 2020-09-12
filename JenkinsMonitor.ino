@@ -51,7 +51,6 @@ void loop() {
     Serial.println("connection failed");
     return;
   }
-  digitalWrite(LED, HIGH); // Turn the LED on
 
   client.print(String("GET ") + url + reduction + " HTTP/1.1\r\n" +
                "Host: " + host + "\r\n" +
@@ -72,9 +71,7 @@ void loop() {
 
   // Parse json for weather score
   DynamicJsonDocument json(1000);
-  StaticJsonDocument<256> filter;
-  filter["healthReport"][0]["score"] = true;
-  auto error = deserializeJson(json, line, DeserializationOption::Filter(filter));
+  auto error = deserializeJson(json, line);
   //serializeJsonPretty(json, Serial);
 
   if (error) {
@@ -92,11 +89,6 @@ void loop() {
   int score = json["healthReport"][0]["score"];
   
   Serial.println(score);
-
-  int16_t x = 0;
-  int16_t y = 0;
-  int16_t w = 200;
-  int16_t h = 200;
 
   const unsigned char * image;
 
@@ -117,8 +109,6 @@ void loop() {
       image = storm;
       break;
     case 0:
-      image = storm;
-      break;
     default:
       image = storm;
   }
@@ -126,15 +116,31 @@ void loop() {
   tft.fillScreen(ST77XX_BLACK);
   //tft.setRotation(2);
 
+  int16_t x = 0;
+  int16_t y = 0;
+  int16_t w = 200;
+  int16_t h = 200;
+
   // TODO Check if for all images the size is ok
-  for (int16_t j = 0; j < h; j++, y++) {
+  for (int16_t j = 0; j < h-2; j++, y++) {
     for (int16_t i = 0; i < w; i++) {
       uint16_t word = pgm_read_word(&((uint16_t *)image)[j * w + i]);
       if (word != 0x0000) {
-        tft.drawPixel(20 + x + i, 20 + y, (((word<<8)&0xff00)|((word>>8)&0x00ff)) );
+        tft.drawPixel(20 + x + i, 15 + y, (((word<<8)&0xff00)|((word>>8)&0x00ff)) );
       }
     }
   }
+
+  char buildNr[10];
+  int nr = json["lastBuild"]["number"];
+  Serial.println(nr);
+  itoa(nr, buildNr+1, 10);
+  buildNr[0]='#';
+
+  tft.setCursor(10, 20);
+  tft.setTextSize(2);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.print(buildNr);
 
   delay(60000);
 }
