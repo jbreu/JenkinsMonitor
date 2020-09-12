@@ -21,7 +21,11 @@ void setup() {
   // Initialize Adafruit ST7789 TFT library
   // if the display has CS pin try with SPI_MODE0
   tft.init(240, 240, SPI_MODE2);    // Init ST7789 display 240x240 pixel
+}
 
+void loop() {
+  digitalWrite(LED, LOW); // Turn the LED on
+  
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -29,9 +33,6 @@ void setup() {
   }
 
   digitalWrite(LED, HIGH); // Turn the LED off
-}
-
-void loop() {
 
   // Use WiFiClient class to create TCP connections
   WiFiClientSecure client;
