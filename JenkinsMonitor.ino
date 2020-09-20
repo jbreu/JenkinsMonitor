@@ -51,8 +51,17 @@ void loop() {
     Serial.println("connection failed");
     return;
   }
+  
+  tft.fillScreen(ST77XX_BLACK);
+  //tft.setRotation(2);
 
-  client.print(String("GET ") + url + reduction + " HTTP/1.1\r\n" +
+  tft.setCursor(10, 200);
+  tft.setTextSize(2);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.print(jobname);
+
+  // Query job overall data
+  client.print(String("GET ") + url + jobname + "/api/json" + "?tree=healthReport[score],lastBuild[number]" + " HTTP/1.1\r\n" +
                "Host: " + host + "\r\n" +
                "User-Agent: ESP8266\r\n" +
                "Authorization: Basic " + token + "\r\n" +
@@ -113,9 +122,6 @@ void loop() {
       image = storm;
   }
 
-  tft.fillScreen(ST77XX_BLACK);
-  //tft.setRotation(2);
-
   int16_t x = 0;
   int16_t y = 0;
   int16_t w = 200;
@@ -137,10 +143,61 @@ void loop() {
   itoa(nr, buildNr+1, 10);
   buildNr[0]='#';
 
-  tft.setCursor(10, 20);
+  tft.setCursor(10, 10);
   tft.setTextSize(2);
   tft.setTextColor(ST77XX_WHITE);
   tft.print(buildNr);
+
+  // Query job lastBuild data
+  client.stop();
+  delay(1000);
+  
+  if (!client.connect(host, 443)) {
+    digitalWrite(LED, LOW); // Turn the LED on
+    Serial.println("connection failed");
+    return;
+  }
+  client.print(String("GET ") + url + jobname + "/lastBuild/api/json" + "?tree=building,result" + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "User-Agent: ESP8266\r\n" +
+               "Authorization: Basic " + token + "\r\n" +
+               "Connection: close\r\n\r\n");
+
+  // Skip header
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    Serial.println(line);
+    if (line.startsWith("\r"))
+      break;
+  }
+
+  // Read full response json
+  line = client.readStringUntil('\n');
+  Serial.println(line);
+  json.clear();
+  error = deserializeJson(json, line);
+
+  if (error) {
+    Serial.print(F("deserializeJson() failed with code "));
+    Serial.println(error.c_str());
+    tft.fillScreen(ST77XX_RED);
+    return;
+  }
+
+  if (json["building"].isNull() || json["result"].isNull()) {
+    tft.fillScreen(ST77XX_RED);
+    return;
+  }
+
+  if (json["building"]) {
+    tft.fillCircle(220, 20, 10, ST77XX_BLUE);
+  } else {
+    if (json["result"] == "SUCCESS") {
+      tft.fillCircle(220, 20, 10, ST77XX_GREEN);
+    } else {
+      tft.fillCircle(220, 20, 10, ST77XX_RED);
+    }
+  }
 
   delay(60000);
 }

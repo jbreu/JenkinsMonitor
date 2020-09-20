@@ -3,8 +3,8 @@
 const char* ssid        = "WIFI_ID";
 const char* password    = "WIFI_PASSWORD";
 const char* host        = "example.org";
-const char* url         = "/jenkins/job/PROJECT/job/REPO/job/master/lastBuild/api/json";
-const char* reduction   = "?tree=healthReport[score],lastBuild[number]";                                    //Reduces the amount of returned json data to only the needed parts
+const char* url         = "/jenkins/job/PROJECT/job/";
+const char* jobname     = "JOBNAME";
 const char* token       = "amFrb2I384E4OTE0MGFkYjQyMGQ3Nz2894FlNzc0NzAwNTGDSWZjYg==";
 const char* clientcert  = R"EOF(
 -----BEGIN CERTIFICATE-----
