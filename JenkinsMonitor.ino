@@ -184,7 +184,7 @@ void loop() {
     return;
   }
 
-  if (json["building"].isNull() || json["result"].isNull()) {
+  if (json["building"].isNull()) {
     tft.fillScreen(ST77XX_RED);
     return;
   }
